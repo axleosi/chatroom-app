@@ -1,0 +1,20 @@
+# --- FLUTTER / DART ---
+build/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.idea/
+.vscode/
+*.iml
+
+# --- NODE BACKEND ---
+backend/node_modules/
+backend/.env
+
+# --- GENERAL ---
+*.log
+.DS_Store
+.env
+*.lock
