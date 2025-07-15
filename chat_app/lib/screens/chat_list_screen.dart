@@ -43,7 +43,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     if (authToken == null) return;
 
     final userRes = await http.get(
-      Uri.parse('http://192.168.8.111:5000/api/me'),
+      Uri.parse('https://chatroom-app-yuao.onrender.com/api/me'),
       headers: {'Authorization': 'Bearer $authToken'},
     );
     final userData = json.decode(userRes.body);
@@ -57,7 +57,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
 
   void connectSocket() {
     socket = IO.io(
-      'http://192.168.8.111:5000',
+      'https://chatroom-app-yuao.onrender.com',
       IO.OptionBuilder()
           .setTransports(['websocket'])
           .setQuery({'userId': currentUserId})
@@ -68,16 +68,17 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     socket!.connect();
 
     socket!.onConnect((_) {
-      socket!.emit('join', currentUserId);
+      print('✅ Socket connected');
+
+      socket!.emit('join', currentUserId); // Join your own room
     });
 
-    socket!.on('receive_message', (data) {
-      setState(() {
-        messages.add({
-          'sender': data['sender'],
-          'content': data['content'],
-        });
-      });
+    socket!.on('room_joined', (roomId) {
+      print('🎉 Joined room: $roomId');
+    });
+
+    socket!.on('receive_message', (data) async {
+      await fetchMessages();
     });
 
     socket!.on('typing', (_) {
@@ -88,24 +89,36 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
       setState(() => friendTyping = false);
     });
 
-    socket!.on('disconnected', (_) {
-      fetchFriendInfo(); 
-    });
+    socket!.onDisconnect((_) => print('🔌 Disconnected from socket'));
+    socket!.onError((err) => print('❌ Socket error: $err'));
   }
 
   Future<void> fetchMessages() async {
     final res = await http.get(
       Uri.parse(
-          'http://192.168.8.111:5000/api/messages/${widget.friendId}'),
+        'https://chatroom-app-yuao.onrender.com/api/message/history/${widget.friendId}',
+      ),
       headers: {'Authorization': 'Bearer $authToken'},
     );
+
     final data = json.decode(res.body);
-    setState(() => messages = List<Map<String, dynamic>>.from(data['messages']));
+    final rawMessages = List<Map<String, dynamic>>.from(data['messages']);
+
+    setState(() {
+      messages = rawMessages.map((msg) {
+        return {
+          'sender': msg['sender'] is Map ? msg['sender']['_id'] : msg['sender'],
+          'content': msg['content'],
+        };
+      }).toList();
+    });
   }
 
   Future<void> fetchFriendInfo() async {
     final res = await http.get(
-      Uri.parse('http://192.168.8.111:5000/api/friend/${widget.friendId}'),
+      Uri.parse(
+        'https://chatroom-app-yuao.onrender.com/api/friend/${widget.friendId}',
+      ),
       headers: {'Authorization': 'Bearer $authToken'},
     );
     final data = json.decode(res.body);
@@ -133,26 +146,47 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     return DateFormat('MMM d, yyyy').format(dt);
   }
 
-  void sendMessage() {
+  void sendMessage() async {
     final content = messageController.text.trim();
-    if (content.isEmpty) return;
+    if (content.isEmpty || authToken == null) return;
 
-    socket!.emit('send_message', {
-      'senderId': currentUserId,
-      'receiverId': widget.friendId,
-      'content': content,
-    });
+    final url = Uri.parse(
+      'https://chatroom-app-yuao.onrender.com/api/message/send',
+    );
 
-    setState(() {
-      messages.add({
-        'sender': currentUserId,
-        'content': content,
-      });
-      messageController.clear();
-      isTyping = false;
-    });
+    try {
+      final response = await http.post(
+        url,
+        headers: {
+          'Authorization': 'Bearer $authToken',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({'receiverId': widget.friendId, 'content': content}),
+      );
 
-    socket!.emit('stopTyping', {'to': widget.friendId});
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 201) {
+        setState(() {
+          messages.add({'sender': currentUserId, 'content': content});
+          messageController.clear();
+          if (isTyping) {
+            isTyping = false;
+            socket?.emit('stopTyping', {'to': widget.friendId});
+          }
+        });
+
+        socket?.emit('send_message', {
+          'senderId': currentUserId,
+          'receiverId': widget.friendId,
+          'content': content,
+        });
+      } else {
+        print('❌ Failed to send message: ${data['message']}');
+      }
+    } catch (err) {
+      print('❌ Error sending message: $err');
+    }
   }
 
   @override
@@ -166,9 +200,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   @override
   Widget build(BuildContext context) {
     if (friend == null) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     return Scaffold(
@@ -201,12 +233,15 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                 final isMe = message['sender'] == currentUserId;
 
                 return Align(
-                  alignment:
-                      isMe ? Alignment.centerRight : Alignment.centerLeft,
+                  alignment: isMe
+                      ? Alignment.centerRight
+                      : Alignment.centerLeft,
                   child: Container(
                     margin: const EdgeInsets.symmetric(vertical: 4),
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
                     decoration: BoxDecoration(
                       color: isMe ? Colors.purple[200] : Colors.grey[300],
                       borderRadius: BorderRadius.circular(10),
@@ -241,6 +276,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                         socket!.emit('stopTyping', {'to': widget.friendId});
                       }
                     },
+                    onSubmitted: (_) => sendMessage(),
                     decoration: const InputDecoration(
                       hintText: 'Type your message...',
                       border: OutlineInputBorder(),

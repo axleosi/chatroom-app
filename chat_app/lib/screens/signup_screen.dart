@@ -26,7 +26,7 @@ class _SignupScreenState extends State<SignupScreen> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => isLoading = true);
 
-    final url = Uri.parse('http://192.168.8.111:5000/api/login');
+    final url = Uri.parse('https://chatroom-app-yuao.onrender.com/api/signup');
     try {
       final response = await http.post(
         url,

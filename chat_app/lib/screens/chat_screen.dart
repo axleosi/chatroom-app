@@ -42,7 +42,7 @@ class _ChatHomeScreenState extends State<ChatHomeScreen> {
 
     try {
       final userRes = await http.get(
-        Uri.parse('http://192.168.8.111:5000/api/me'),
+        Uri.parse('https://chatroom-app-yuao.onrender.com/api/me'),
         headers: headers,
       );
       final userData = json.decode(userRes.body);
@@ -58,7 +58,7 @@ class _ChatHomeScreenState extends State<ChatHomeScreen> {
     final headers = {'Authorization': 'Bearer $authToken'};
     try {
       final res = await http.get(
-        Uri.parse('http://192.168.8.111:5000/api/friend/list'),
+        Uri.parse('https://chatroom-app-yuao.onrender.com/api/friend/list'),
         headers: headers,
       );
       final data = json.decode(res.body);
@@ -82,7 +82,7 @@ class _ChatHomeScreenState extends State<ChatHomeScreen> {
     try {
       final headers = {'Authorization': 'Bearer $authToken'};
       final res = await http.get(
-        Uri.parse('http://192.168.8.111:5000/api/friend/search?query=$query'),
+        Uri.parse('https://chatroom-app-yuao.onrender.com/api/friend/search?query=$query'),
         headers: headers,
       );
       final data = json.decode(res.body);
@@ -100,7 +100,7 @@ class _ChatHomeScreenState extends State<ChatHomeScreen> {
 
     try {
       final res = await http.post(
-        Uri.parse('http://192.168.8.111:5000/api/friend/add'),
+        Uri.parse('https://chatroom-app-yuao.onrender.com/api/friend/add'),
         headers: headers,
         body: json.encode({'usernameToAdd': username}),
       );
@@ -134,7 +134,7 @@ class _ChatHomeScreenState extends State<ChatHomeScreen> {
 
     try {
       await http.post(
-        Uri.parse('http://192.168.8.111:5000/api/friend/remove'),
+        Uri.parse('https://chatroom-app-yuao.onrender.com/api/friend/remove'),
         headers: headers,
         body: json.encode({'usernameToRemove': username}),
       );
@@ -156,7 +156,7 @@ class _ChatHomeScreenState extends State<ChatHomeScreen> {
               '/',
               (route) => false,
             ),
-            child: const Text('Logout', style: TextStyle(color: Colors.white)),
+            child: const Text('Logout', style: TextStyle(color: Colors.black)),
           )
         ],
       ),

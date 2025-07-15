@@ -19,12 +19,22 @@ router.post('/message/send', authenticateToken, async (req, res) => {
       content,
     });
 
+    // Send response first
     res.status(201).json({ message: 'Message sent', data: newMessage });
+
+    // Emit socket event after saving
+    const io = req.app.get('io'); // ✅ Access io instance
+    io.to(receiverId.toString()).emit('receive_message', {
+      sender: senderId,
+      content,
+    });
+
   } catch (err) {
-    console.error(err);
+    console.error('❌ Message send error:', err);
     res.status(500).json({ message: 'Server error' });
   }
 });
+
 
 router.get('/message/history/:receiverId', authenticateToken, async (req, res) => {
   const userId = req.params.receiverId;
