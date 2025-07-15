@@ -19,3 +19,6 @@ backend/.env
 .env
 *.lock
 .firebase/
+firebase.json
+.firebaserc
+

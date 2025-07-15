@@ -78,7 +78,11 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     });
 
     socket!.on('receive_message', (data) async {
-      await fetchMessages();
+      if (data['sender'] != currentUserId) {
+        setState(() {
+          messages.add({'sender': data['sender'], 'content': data['content']});
+        });
+      }
     });
 
     socket!.on('typing', (_) {

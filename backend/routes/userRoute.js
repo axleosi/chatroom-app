@@ -8,28 +8,40 @@ const router = express.Router()
 
 
 router.post('/signup', async (req, res) => {
-  const { username, email, password } = req.body
+  const { username, email, password } = req.body;
 
   try {
-    const userExists = await User.findOne({ username })
+    const userExists = await User.findOne({ username: username.toLowerCase() });
     if (userExists) {
-      return res.status(400).json({ message: 'User already exists' })
+      return res.status(400).json({ message: 'Username already exists' });
     }
 
-    const newUser = await User.create({ username, email, password })
-    await newUser.save()
+    const emailExists = await User.findOne({ email: email.toLowerCase() });
+    if (emailExists) {
+      return res.status(400).json({ message: 'Email already exists' });
+    }
+
+    const newUser = await User.create({
+      username: username.toLowerCase(),
+      email: email.toLowerCase(),
+      password,
+    });
 
     res.status(201).json({
       _id: newUser._id,
       username: newUser.username,
       email: newUser.email,
       token: generateToken(newUser._id),
-    })
+    });
   } catch (error) {
-    console.error(error)
-    res.status(500).json({ message: 'Server error' })
+    console.error(error);
+    if (error.code === 11000) {
+      return res.status(400).json({ message: 'Username or email already exists' });
+    }
+    res.status(500).json({ message: 'Server error' });
   }
-})
+});
+
 
 router.get('/me', authenticateToken, async (req, res) => {
   try {
